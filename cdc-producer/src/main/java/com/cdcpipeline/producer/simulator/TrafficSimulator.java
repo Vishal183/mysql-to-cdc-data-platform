@@ -1,5 +1,6 @@
 package com.cdcpipeline.producer.simulator;
 
+import com.cdcpipeline.producer.generator.ClickstreamGenerator;
 import com.cdcpipeline.producer.generator.CustomerGenerator;
 import com.cdcpipeline.producer.generator.OrderGenerator;
 import org.slf4j.Logger;
@@ -24,6 +25,7 @@ public class TrafficSimulator {
 
     private final CustomerGenerator customerGen = new CustomerGenerator();
     private final OrderGenerator orderGen = new OrderGenerator();
+    private final ClickstreamGenerator clickstreamGen = new ClickstreamGenerator();
 
     private final List<Integer> customerIds = new ArrayList<>();
     private final List<Integer> productIds = new ArrayList<>();
@@ -88,29 +90,33 @@ public class TrafficSimulator {
         int roll = random.nextInt(100);
 
         try (Connection conn = dataSource.getConnection()) {
-            if (roll < 30) {
-                // 30% — create customer
+            if (roll < 20) {
+                // 20% — create customer
                 int id = customerGen.insertCustomer(conn);
                 customerIds.add(id);
 
-            } else if (roll < 55) {
-                // 25% — create order with items
+            } else if (roll < 40) {
+                // 20% — create order with items
                 orderGen.createOrder(conn, customerIds, productIds);
 
-            } else if (roll < 80) {
-                // 25% — update order status
+            } else if (roll < 55) {
+                // 15% — update order status
                 orderGen.updateOrderStatus(conn);
 
-            } else if (roll < 90) {
+            } else if (roll < 65) {
                 // 10% — update customer info
                 if (!customerIds.isEmpty()) {
                     int customerId = customerIds.get(random.nextInt(customerIds.size()));
                     customerGen.updateCustomer(conn, customerId);
                 }
 
-            } else {
+            } else if (roll < 75) {
                 // 10% — delete cancelled order
                 orderGen.deleteCancelledOrder(conn);
+
+            } else {
+                // 25% — generate clickstream browsing session
+                clickstreamGen.generateBrowsingSession(conn, customerIds, productIds);
             }
         }
     }
