@@ -1,0 +1,58 @@
+services:
+  clickstream-consumer:
+    build:
+      context: ./consumer
+      dockerfile: Dockerfile
+    container_name: clickstream-consumer
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      DELTA_ROOT: /opt/spark-data
+      TRIGGER_INTERVAL: "10 seconds"
+    volumes:
+      - cdc_delta_data:/opt/spark-data/delta
+    networks:
+      - cdc-network
+
+  query-api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: query-api
+    ports:
+      - "8000:8000"
+    environment:
+      DELTA_ROOT: /opt/api-data
+    volumes:
+      - cdc_delta_data:/opt/api-data/delta:ro
+    networks:
+      - cdc-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  interests-job:
+    build:
+      context: ./consumer
+      dockerfile: Dockerfile
+    container_name: interests-job
+    environment:
+      DELTA_ROOT: /opt/spark-data
+    volumes:
+      - cdc_delta_data:/opt/spark-data/delta
+    entrypoint: ["python3", "/opt/consumer/interests_job.py"]
+    networks:
+      - cdc-network
+    profiles:
+      - batch
+
+volumes:
+  cdc_delta_data:
+    external: true
+    name: mysql-to-cdc-data-platform_delta_data
+
+networks:
+  cdc-network:
+    external: true
+    name: mysql-to-cdc-data-platform_default
